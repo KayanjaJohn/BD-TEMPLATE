@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday! 🎉</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
+
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+        }
+
+        #video-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 0; opacity: 0.35;
+        }
+
+        #ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .birthday-text {
+            font-size: clamp(3rem, 10vw, 8rem); font-weight: 900;
+            background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff);
+            background-size: 300% 300%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: gradientShift 3s ease infinite, float 3s ease-in-out infinite;
+            text-shadow: 0 0 60px rgba(255, 107, 107, 0.5);
+            letter-spacing: 0.1em; text-align: center; line-height: 1.1;
+        }
+
+        .birthday-name {
+            font-size: clamp(4.5rem, 14vw, 12rem); font-weight: 500;
+            font-family: helvetica; font-style: italic;
+            background: linear-gradient(45deg, #FAFFF9, #80C535, #6008C0, #FFF5E5, #2544DE);
+            background-size: 400% 400%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: gradientShift 4s ease-in-out infinite, float 5s ease-in-out infinite;
+            text-align: center; line-height: 1.05;
+            text-shadow: 3px 2px 0 rgba(5, 21, 23, 0.43);
+            filter: drop-shadow(5px 0 15px rgba(222, 223, 222, 0.15));
+            will-change: transform, background-position;
+        }
+
+        .sub-text {
+            font-size: clamp(1.2rem, 3vw, 2.5rem); color: #fff; margin-top: 1rem;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            animation: pulse 2s ease-in-out infinite;
+            font-weight: 300; letter-spacing: 0.2em;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; }
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: opacity 0.8s ease;
+        }
+        #start-overlay.hidden { opacity: 0; pointer-events: none; }
+
+        .start-btn {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3rem; color: white;
+            box-shadow: 0 0 60px rgba(102, 126, 234, 0.6);
+            animation: pulse 2s ease-in-out infinite;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+        .start-text { color: white; margin-top: 2rem; font-size: 1.5rem; letter-spacing: 0.15em; text-transform: uppercase; }
+
+        #controls {
+            position: fixed; bottom: 20px; right: 20px; z-index: 20;
+            display: flex; gap: 10px;
+        }
+        .control-btn {
+            width: 50px; height: 50px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2); color: white;
+            font-size: 1.2rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .control-btn:hover { background: rgba(255, 255, 255, 0.25); transform: scale(1.1); }
+
+        .confetti-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5;
+        }
+
+        .emoji-float {
+            position: fixed; font-size: 2rem; pointer-events: none; z-index: 15;
+            animation: emojiFloat 4s ease-in forwards;
+        }
+        @keyframes emojiFloat {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 200;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center; color: white;
+            transition: opacity 0.5s;
+        }
+        .loading-overlay.visible { display: flex; }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .spinner {
+            width: 60px; height: 60px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #ff6b6b; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 1.2rem; letter-spacing: 0.1em; }
+        .loading-progress { margin-top: 10px; font-size: 0.9rem; color: rgba(255,255,255,0.6); }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ║                    CONFIGURATION SECTION                      ║ -->
+    <!-- ║              CHANGE ONLY THESE VALUES BELOW                   ║ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- 🎬 DEFAULT VIDEO (stars in space) - always plays muted, looped -->
+    <!-- 🎬 CUSTOM VIDEO URL - change this to your own video file/URL -->
+    <script>
+        const DEFAULT_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4";
+        const CUSTOM_VIDEO_URL = "video.mp4"; // <-- CHANGE THIS TO YOUR VIDEO URL
+    </script>
+
+    <video id="video-bg" loop muted playsinline>
+        <source src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4" type="video/mp4">
+    </video>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- ║              END CONFIG — DO NOT EDIT BELOW                  ║ -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <div id="canvas-container"></div>
+    <canvas class="confetti-canvas" id="confetti"></canvas>
+
+    <div id="ui-layer">
+        <div class="birthday-text">HAPPY<br>BIRTHDAY!</div>
+        <div class="birthday-name">Priscixp<br>💜</div>
+        <div class="sub-text">Make a wish ✨</div>
+    </div>
+
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading birthday magic...</div>
+        <div class="loading-progress" id="load-progress">0 / 8 images</div>
+    </div>
+
+    <div id="start-overlay" onclick="startExperience()">
+        <div class="start-btn">🎂</div>
+        <div class="start-text">Tap to Celebrate</div>
+    </div>
+
+    <div id="controls">
+        <button class="control-btn" onclick="toggleMusic()" title="Toggle Music">🎵</button>
+        <button class="control-btn" onclick="toggleVideo()" title="Toggle Video">🎬</button>
+        <button class="control-btn" onclick="burstConfetti()" title="More Confetti!">🎉</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // ║                    CONFIGURATION SECTION                      ║
+        // ║     CHANGE ONLY THESE VALUES — NOTHING ELSE NEEDED           ║
+        // ═══════════════════════════════════════════════════════════════
+
+        // 🖼️ CARD IMAGES (8 cards orbiting the sun)
+        const CARD_IMAGES = [
+            "img1.png",
+            "img3.png",
+            "img2.png",
+            "img4.png",
+            "img6.png",
+            "img5.png",
+            "img8.png",
+            "img7.png",
+            "img9.png",
+        ];
+
+        // 🏷️ CARD LABELS
+        const CARD_LABELS = [
+            'Sweet Moments', 'Party Time', 'Make a Wish', 'Celebrate Life',
+            'Joy & Laughter', 'Special Day', 'Dream Big', 'Love & Happiness'
+        ];
+
+        // 🎨 CARD COLORS
+        const CARD_COLORS = [
+            '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3',
+            '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43'
+        ];
+
+        // ═══════════════════════════════════════════════════════════════
+        // ║         SPEED & SIZE CONTROLS — ADJUST THESE                 ║
+        // ═══════════════════════════════════════════════════════════════
+
+        // 🌞 SUN SIZE (radius of the center sphere)
+        const SUN_SIZE = 3.8;          // was 2.5 — now bigger
+
+        // 🌞 SUN ROTATION SPEED (how fast the sun spins)
+        const SUN_SPEED = 0.003;       // was 0.005 — now slower
+
+        // 🃏 CARD SIZE (width, height of each photo card)
+        const CARD_WIDTH = 3.5;        // was 2.2 — now bigger
+        const CARD_HEIGHT = 3.85;      // was 2.75 — now bigger
+
+        // 🪐 CARD ORBIT SPEED (how fast cards circle the sun)
+        const ORBIT_SPEED = 0.028;     // was 0.015 — now faster
+
+        // 🌊 CARD BOB SPEED (how fast cards float up/down)
+        const BOB_SPEED = 1.0;         // floating speed
+
+        // 🌊 CARD BOB HEIGHT (how far cards move up/down)
+        const BOB_HEIGHT = 0.4;        // floating amplitude
+
+        // 🎥 CAMERA ORBIT SPEED
+        const CAMERA_SPEED = 0.12;     // camera swoop speed
+
+        // ⭐ STAR ROTATION SPEED
+        const STAR_SPEED = 0.0002;     // starfield rotation
+
+        // ═══════════════════════════════════════════════════════════════
+        // ║              END CONFIG — DO NOT EDIT BELOW                  ║
+        // ═══════════════════════════════════════════════════════════════
+
+        // ==================== AUDIO (G, Dm, F, C, G, Dm, F, Am) ====================
+        let audioCtx, musicPlaying = false, musicInterval;
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playTone(freq, dur, vol) {
+            if (!audioCtx) return;
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(0, audioCtx.currentTime);
+            g.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.5);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(); o.stop(audioCtx.currentTime + dur);
+        }
+
+        function playPluck(freq, delay, vol) {
+            if (!audioCtx) return;
+            setTimeout(() => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = 'triangle';
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(); o.stop(audioCtx.currentTime + 1.2);
+            }, delay);
+        }
+
+        // CHORD PROGRESSION: G, Dm, F, C, G, Dm, F, Am
+        const CHORDS = [
+            { name: "G",  notes: [196.00, 246.94, 293.66] },      // G + B + D
+            { name: "Dm", notes: [293.66, 349.23, 440.00] },      // D + F + A
+            { name: "F",  notes: [174.61, 220.00, 261.63] },      // F + A + C
+            { name: "C",  notes: [261.63, 329.63, 392.00] },      // C + E + G
+            { name: "G",  notes: [196.00, 246.94, 293.66] },      // G + B + D
+            { name: "Dm", notes: [293.66, 349.23, 440.00] },      // D + F + A
+            { name: "F",  notes: [174.61, 220.00, 261.63] },      // F + A + C
+            { name: "Am", notes: [220.00, 261.63, 329.63] }       // A + C + E
+        ];
+
+        function startMusic() {
+            if (musicPlaying) return;
+            musicPlaying = true;
+            let chordIndex = 0;
+
+            // Play first chord
+            CHORDS[0].notes.forEach((f, i) => {
+                playTone(f, 3.0, 0.05);
+                playPluck(f, i * 40, 0.04);
+            });
+
+            musicInterval = setInterval(() => {
+                if (!musicPlaying) return;
+                chordIndex = (chordIndex + 1) % CHORDS.length;
+                const chord = CHORDS[chordIndex];
+
+                // Warm pad
+                chord.notes.forEach((f, i) => {
+                    setTimeout(() => playTone(f, 3.0, 0.05), i * 50);
+                });
+                // Gentle pluck attack
+                chord.notes.forEach((f, i) => {
+                    setTimeout(() => playPluck(f, i * 30, 0.035), i * 30);
+                });
+                // Sparkle on G and C
+                if (chord.name === "G" || chord.name === "C") {
+                    const sparkle = chord.name === "G" ? 783.99 : 523.25;
+                    setTimeout(() => playPluck(sparkle, 0, 0.025), 400);
+                }
+            }, 2800);
+        }
+
+        function stopMusic() { musicPlaying = false; clearInterval(musicInterval); }
+
+        function toggleMusic() {
+            if (musicPlaying) stopMusic();
+            else { if (!audioCtx) initAudio(); startMusic(); }
+        }
+
+        // ==================== VIDEO TOGGLE ====================
+        let usingCustomVideo = false;
+        const videoEl = document.getElementById('video-bg');
+
+        function toggleVideo() {
+            // If custom video URL is not set, just play/pause the default
+            if (CUSTOM_VIDEO_URL === "YOUR_VIDEO_HERE.mp4" || !CUSTOM_VIDEO_URL) {
+                videoEl.paused ? videoEl.play() : videoEl.pause();
+                return;
+            }
+
+            usingCustomVideo = !usingCustomVideo;
+            const src = videoEl.querySelector('source');
+
+            if (usingCustomVideo) {
+                // Switch to custom video
+                src.src = CUSTOM_VIDEO_URL;
+                videoEl.load();
+                videoEl.muted = true;
+                videoEl.loop = true;
+                videoEl.play().catch(() => {});
+            } else {
+                // Switch back to default star video
+                src.src = DEFAULT_VIDEO_URL;
+                videoEl.load();
+                videoEl.muted = true;
+                videoEl.loop = true;
+                videoEl.play().catch(() => {});
+            }
+        }
+
+        // ==================== IMAGE LOADING ====================
+        function loadImage(url, timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let done = false;
+                const timer = setTimeout(() => { if (!done) { done = true; reject(); } }, timeout);
+                img.onload = () => { if (!done) { done = true; clearTimeout(timer); resolve(img); } };
+                img.onerror = () => { if (!done) { done = true; clearTimeout(timer); reject(); } };
+                img.crossOrigin = 'anonymous';
+                img.src = url;
+            });
+        }
+
+        async function loadAllImages() {
+            const images = [];
+            const progressEl = document.getElementById('load-progress');
+            for (let i = 0; i < CARD_IMAGES.length; i++) {
+                try {
+                    const img = await loadImage(CARD_IMAGES[i]);
+                    images.push(img);
+                } catch (e) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512; canvas.height = 640;
+                    const ctx = canvas.getContext('2d');
+                    const gradient = ctx.createLinearGradient(0, 0, 512, 640);
+                    gradient.addColorStop(0, CARD_COLORS[i % CARD_COLORS.length]);
+                    gradient.addColorStop(0.5, adjustColor(CARD_COLORS[i % CARD_COLORS.length], 30));
+                    gradient.addColorStop(1, CARD_COLORS[i % CARD_COLORS.length]);
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 512, 640);
+                    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                    for (let j = 0; j < 20; j++) {
+                        ctx.beginPath();
+                        ctx.arc(Math.random() * 512, Math.random() * 640, Math.random() * 50 + 10, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    images.push(canvas);
+                }
+                if (progressEl) progressEl.textContent = (i + 1) + ' / ' + CARD_IMAGES.length + ' images';
+            }
+            return images;
+        }
+
+        // ==================== THREE.JS SCENE ====================
+        let scene, camera, renderer, sun, planets = [], starField, time = 0;
+
+        function initThree(images) {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 20;
+            camera.position.y = 5;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const pointLight = new THREE.PointLight(0xffaa00, 2, 50);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+            const rimLight = new THREE.DirectionalLight(0x4444ff, 0.5);
+            rimLight.position.set(5, 5, 5);
+            scene.add(rimLight);
+
+            createSun();
+            createPlanets(images);
+            createStarfield();
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        // Static sun — no per-frame canvas redraw for performance
+        function createSun() {
+            const geometry = new THREE.SphereGeometry(SUN_SIZE, 64, 64);
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            const texture = new THREE.CanvasTexture(canvas);
+
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                emissive: 0xff6600,
+                emissiveIntensity: 0.5
+            });
+
+            sun = new THREE.Mesh(geometry, material);
+            scene.add(sun);
+
+            // One-time sun texture draw (not animated every frame)
+            function drawSun() {
+                const t = Date.now() * 0.001;
+                const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+                gradient.addColorStop(0, `hsl(${30 + Math.sin(t) * 10}, 100%, 70%)`);
+                gradient.addColorStop(0.4, `hsl(${20 + Math.sin(t * 1.3) * 15}, 100%, 50%)`);
+                gradient.addColorStop(0.7, `hsl(${10 + Math.sin(t * 0.7) * 20}, 100%, 40%)`);
+                gradient.addColorStop(1, '#000');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+                for (let i = 0; i < 50; i++) {
+                    const x = Math.random() * 512;
+                    const y = Math.random() * 512;
+                    const r = Math.random() * 30 + 10;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, ${100 + Math.random() * 155}, 0, ${Math.random() * 0.3})`;
+                    ctx.fill();
+                }
+                texture.needsUpdate = true;
+            }
+            drawSun();
+            // Update sun texture occasionally, not every frame
+            setInterval(drawSun, 200);
+
+            // Glow layers
+            const glowGeometry = new THREE.SphereGeometry(SUN_SIZE * 1.4, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff6600, transparent: true, opacity: 0.15, side: THREE.BackSide
+            });
+            sun.add(new THREE.Mesh(glowGeometry, glowMaterial));
+
+            const outerGlowGeometry = new THREE.SphereGeometry(SUN_SIZE * 2.0, 32, 32);
+            const outerGlowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff4400, transparent: true, opacity: 0.05, side: THREE.BackSide
+            });
+            sun.add(new THREE.Mesh(outerGlowGeometry, outerGlowMaterial));
+        }
+
+        function createCardTexture(image, label, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 640;
+            const ctx = canvas.getContext('2d');
+
+            const gradient = ctx.createLinearGradient(0, 0, 512, 640);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, adjustColor(color, -40));
+            ctx.fillStyle = gradient;
+            roundRect(ctx, 0, 0, 512, 640, 30);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 8;
+            roundRect(ctx, 10, 10, 492, 620, 25);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            roundRect(ctx, 30, 30, 452, 450, 20);
+            ctx.fill();
+
+            const imgW = image.width || 512;
+            const imgH = image.height || 640;
+            const imgAspect = imgW / imgH;
+            const frameAspect = 452 / 450;
+            let sx, sy, sWidth, sHeight;
+
+            if (imgAspect > frameAspect) {
+                sHeight = imgH; sWidth = imgH * frameAspect;
+                sx = (imgW - sWidth) / 2; sy = 0;
+            } else {
+                sWidth = imgW; sHeight = imgW / frameAspect;
+                sx = 0; sy = (imgH - sHeight) / 2;
+            }
+
+            ctx.save();
+            roundRect(ctx, 30, 30, 452, 450, 20);
+            ctx.clip();
+            try { ctx.drawImage(image, sx, sy, sWidth, sHeight, 30, 30, 452, 450); }
+            catch (e) { ctx.fillStyle = color; ctx.fillRect(30, 30, 452, 450); }
+            ctx.restore();
+
+            const overlayGrad = ctx.createLinearGradient(0, 350, 0, 480);
+            overlayGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            overlayGrad.addColorStop(1, 'rgba(0,0,0,0.6)');
+            ctx.fillStyle = overlayGrad;
+            ctx.fillRect(30, 350, 452, 130);
+
+            ctx.font = 'bold 52px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText(label, 256, 555);
+
+            ctx.shadowColor = 'transparent';
+            ctx.font = '24px serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillText('✦ ✦ ✦', 256, 610);
+
+            ctx.font = '40px serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillText('❖', 50, 70);
+            ctx.fillText('❖', 462, 70);
+            ctx.fillText('❖', 50, 600);
+            ctx.fillText('❖', 462, 600);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createPlanets(images) {
+            images.forEach((image, i) => {
+                const angle = (i / images.length) * Math.PI * 2;
+                const radius = 8 + (i % 3) * 3;
+                const speed = 0.25 + (i % 4) * 0.1;
+                const tilt = (Math.random() - 0.5) * 0.6;
+
+                const texture = createCardTexture(image, CARD_LABELS[i], CARD_COLORS[i]);
+                const geometry = new THREE.PlaneGeometry(CARD_WIDTH, CARD_HEIGHT);
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    emissive: new THREE.Color(CARD_COLORS[i]),
+                    emissiveIntensity: 0.15,
+                    roughness: 0.2,
+                    metalness: 0.1,
+                    side: THREE.DoubleSide
+                });
+
+                const card = new THREE.Mesh(geometry, material);
+                const orbitContainer = new THREE.Object3D();
+                orbitContainer.rotation.y = angle;
+                orbitContainer.rotation.x = tilt;
+                scene.add(orbitContainer);
+
+                card.position.x = radius;
+                orbitContainer.add(card);
+
+                const glowGeo = new THREE.PlaneGeometry(CARD_WIDTH * 1.1, CARD_HEIGHT * 1.08);
+                const glowMat = new THREE.MeshBasicMaterial({
+                    color: CARD_COLORS[i], transparent: true, opacity: 0.15, side: THREE.BackSide
+                });
+                const glow = new THREE.Mesh(glowGeo, glowMat);
+                glow.position.z = -0.15;
+                card.add(glow);
+
+                if (i % 2 === 0) {
+                    const ringGeo = new THREE.TorusGeometry(CARD_WIDTH * 0.6, 0.02, 8, 64);
+                    const ringMat = new THREE.MeshBasicMaterial({
+                        color: CARD_COLORS[i], transparent: true, opacity: 0.3
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    card.add(ring);
+                }
+
+                planets.push({
+                    mesh: card, container: orbitContainer, speed: speed,
+                    floatSpeed: BOB_SPEED + Math.random() * 0.5,
+                    floatAmp: BOB_HEIGHT + Math.random() * 0.3,
+                    rotationOffset: Math.random() * Math.PI * 2
+                });
+            });
+        }
+
+        function createStarfield() {
+            const geometry = new THREE.BufferGeometry();
+            const count = 2000;
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                const r = 20 + Math.random() * 80;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = r * Math.cos(phi);
+                const color = new THREE.Color();
+                color.setHSL(Math.random(), 0.8, 0.8);
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.15, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
+            });
+
+            starField = new THREE.Points(geometry, material);
+            scene.add(starField);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.016;
+
+            if (sun) {
+                sun.rotation.y += SUN_SPEED;
+                sun.rotation.x += SUN_SPEED * 0.4;
+            }
+
+            planets.forEach((planet, i) => {
+                planet.container.rotation.y += planet.speed * ORBIT_SPEED;
+                planet.mesh.position.y = Math.sin(time * planet.floatSpeed + planet.rotationOffset) * planet.floatAmp;
+                planet.mesh.rotation.z = Math.sin(time * 0.5 + planet.rotationOffset) * 0.05;
+                planet.mesh.lookAt(camera.position);
+                planet.mesh.rotateY(Math.sin(time * 0.4 + i) * 0.1);
+            });
+
+            if (starField) {
+                starField.rotation.y += STAR_SPEED;
+                starField.rotation.x += STAR_SPEED * 0.5;
+            }
+
+            camera.position.x = Math.sin(time * CAMERA_SPEED) * 3;
+            camera.position.z = 20 + Math.cos(time * CAMERA_SPEED * 0.7) * 2;
+            camera.position.y = 5 + Math.cos(time * CAMERA_SPEED * 0.6) * 1.5;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==================== CONFETTI ====================
+        const confettiCanvas = document.getElementById('confetti');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let confettiParticles = [];
+
+        function resizeConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        resizeConfetti();
+        window.addEventListener('resize', resizeConfetti);
+
+        class Confetti {
+            constructor(burst = false) {
+                this.x = burst ? confettiCanvas.width / 2 + (Math.random() - 0.5) * 100 : Math.random() * confettiCanvas.width;
+                this.y = burst ? confettiCanvas.height / 2 + (Math.random() - 0.5) * 100 : -10;
+                this.size = Math.random() * 10 + 5;
+                this.speedY = burst ? (Math.random() - 0.5) * 15 : Math.random() * 3 + 2;
+                this.speedX = burst ? (Math.random() - 0.5) * 15 : (Math.random() - 0.5) * 2;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = (Math.random() - 0.5) * 10;
+                this.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+                this.shape = Math.random() > 0.5 ? 'rect' : 'circle';
+                this.life = burst ? 120 : Infinity;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX + Math.sin(this.y * 0.01);
+                this.rotation += this.rotationSpeed;
+                if (this.life !== Infinity) this.life--;
+                if (this.life < 20) return false;
+                if (this.life === Infinity && this.y > confettiCanvas.height + 10) {
+                    this.y = -10;
+                    this.x = Math.random() * confettiCanvas.width;
+                }
+                return true;
+            }
+            draw() {
+                confettiCtx.save();
+                confettiCtx.translate(this.x, this.y);
+                confettiCtx.rotate(this.rotation * Math.PI / 180);
+                confettiCtx.fillStyle = this.color;
+                if (this.shape === 'rect') {
+                    confettiCtx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size * 0.6);
+                } else {
+                    confettiCtx.beginPath();
+                    confettiCtx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+                    confettiCtx.fill();
+                }
+                confettiCtx.restore();
+            }
+        }
+
+        function initConfetti() {
+            for (let i = 0; i < 150; i++) confettiParticles.push(new Confetti());
+            function loop() {
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                confettiParticles = confettiParticles.filter(p => p.update());
+                confettiParticles.forEach(p => p.draw());
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function burstConfetti() {
+            for (let i = 0; i < 50; i++) confettiParticles.push(new Confetti(true));
+            if (audioCtx) {
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    setTimeout(() => playTone(freq, 'sine', 0.5, 0.15), i * 100);
+                });
+            }
+            spawnEmojis();
+        }
+
+        function spawnEmojis() {
+            const emojis = ['🎉', '🎂', '🎁', '🎈', '✨', '🌟', '🍰', '🎊'];
+            for (let i = 0; i < 15; i++) {
+                const el = document.createElement('div');
+                el.className = 'emoji-float';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = Math.random() * 100 + 'vw';
+                el.style.animationDuration = (3 + Math.random() * 2) + 's';
+                el.style.fontSize = (1.5 + Math.random() * 2) + 'rem';
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 5000);
+            }
+        }
+
+        // ==================== UTILITIES ====================
+        function adjustColor(hex, amount) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        // ==================== MAIN START ====================
+        let experienceStarted = false;
+
+        async function startExperience() {
+            if (experienceStarted) return;
+            experienceStarted = true;
+
+            document.getElementById('start-overlay').classList.add('hidden');
+            const loading = document.getElementById('loading');
+            loading.classList.add('visible');
+
+            // Start default video (muted, looped)
+            videoEl.muted = true;
+            videoEl.loop = true;
+            videoEl.play().catch(e => console.log('Video autoplay blocked'));
+
+            let images;
+            try { images = await loadAllImages(); }
+            catch (e) {
+                images = [];
+                for (let i = 0; i < 8; i++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512; canvas.height = 640;
+                    const ctx = canvas.getContext('2d');
+                    const gradient = ctx.createLinearGradient(0, 0, 512, 640);
+                    gradient.addColorStop(0, CARD_COLORS[i]);
+                    gradient.addColorStop(1, adjustColor(CARD_COLORS[i], -40));
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 512, 640);
+                    images.push(canvas);
+                }
+            }
+
+            loading.classList.add('hidden');
+            initAudio();
+            startMusic();
+            initThree(images);
+            initConfetti();
+
+            setTimeout(burstConfetti, 500);
+            setTimeout(burstConfetti, 1500);
+            setInterval(spawnEmojis, 8000);
+        }
+
+        // Mouse interaction for parallax
+        document.addEventListener('mousemove', (e) => {
+            if (!camera) return;
+            const x = (e.clientX / window.innerWidth - 0.5) * 2;
+            const y = (e.clientY / window.innerHeight - 0.5) * 2;
+            const targetX = Math.sin(time * CAMERA_SPEED) * 3 + x * 1.5;
+            const targetY = 5 + Math.cos(time * CAMERA_SPEED * 0.6) * 1.5 + y * 0.8;
+            camera.position.x += (targetX - camera.position.x) * 0.05;
+            camera.position.y += (targetY - camera.position.y) * 0.05;
+        });
+
+        // Click to spawn confetti
+        document.addEventListener('click', (e) => {
+            if (!experienceStarted || e.target.closest('.control-btn')) return;
+            if (Math.random() > 0.8) burstConfetti();
+        });
+    </script>
+</body>
+</html>
