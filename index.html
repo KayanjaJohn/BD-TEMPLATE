@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday! 🎉</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: 'Montserrat', sans-serif; }
+
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+        }
+
+        #video-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 0; opacity: 0.35;
+            will-change: transform;
+        }
+
+        #vignette {
+            position: fixed; inset: 0; z-index: 2; pointer-events: none;
+            background:
+              radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 25%, rgba(0,0,0,0.50) 70%, rgba(0,0,0,0.88) 100%),
+              radial-gradient(circle at 20% 20%, rgba(184, 134, 11, 0.12), transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(218, 165, 32, 0.10), transparent 55%);
+        }
+
+        #ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            perspective: 1200px;
+        }
+        #ui-tilt {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease-out;
+        }
+
+        .birthday-text {
+            font-size: clamp(2.8rem, 8vw, 7rem); font-weight: 900;
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #FFF8DC, #DAA520, #FFD700, #DAA520, #FFF8DC);
+            background-size: 300% 300%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: goldShift 5s ease infinite;
+            filter: drop-shadow(0 2px 0 rgba(0,0,0,0.5)) drop-shadow(0 8px 30px rgba(218, 165, 32, 0.3));
+            letter-spacing: 0.15em; text-align: center; line-height: 1.15;
+            transform: translateZ(60px);
+            text-transform: uppercase;
+        }
+
+        .birthday-name {
+            font-size: clamp(4rem, 12vw, 11rem); font-weight: 700;
+            font-family: 'Playfair Display', serif; font-style: italic;
+            background: linear-gradient(45deg, #FAFFF9, #DAA520, #FFD700, #FFF8DC, #DAA520, #FAFFF9);
+            background-size: 400% 400%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: goldShift 6s ease-in-out infinite;
+            text-align: center; line-height: 1.05;
+            filter: drop-shadow(2px 3px 0 rgba(5,21,23,0.55)) drop-shadow(0 20px 45px rgba(218, 165, 32, 0.35));
+            transform: translateZ(110px);
+            letter-spacing: 0.08em;
+        }
+
+        .sub-text {
+            font-size: clamp(1.1rem, 2.5vw, 2.2rem); color: #FFF8DC; margin-top: 1.5rem;
+            text-shadow: 0 2px 0 rgba(0,0,0,0.45), 0 0 20px rgba(218, 165, 32, 0.6);
+            font-weight: 300; letter-spacing: 0.25em;
+            transform: translateZ(30px);
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+        }
+
+        .luxury-divider {
+            width: 120px; height: 2px;
+            background: linear-gradient(90deg, transparent, #DAA520, #FFD700, #DAA520, transparent);
+            margin: 1.5rem auto;
+            opacity: 0.7;
+            transform: translateZ(40px);
+        }
+
+        @keyframes goldShift {
+            0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; }
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.88); z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: opacity 0.8s ease;
+        }
+        #start-overlay.hidden { opacity: 0; pointer-events: none; }
+
+        .start-btn {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: linear-gradient(135deg, #DAA520, #FFD700, #B8860B);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3rem; color: #1a1a1a;
+            box-shadow: 0 0 50px rgba(218, 165, 32, 0.4);
+            border: 2px solid rgba(255, 248, 220, 0.3);
+        }
+        .start-text { 
+            color: #FFF8DC; margin-top: 2rem; font-size: 1.2rem; 
+            letter-spacing: 0.3em; text-transform: uppercase;
+            font-family: 'Cormorant Garamond', serif;
+        }
+        .start-sub { 
+            color: rgba(218, 165, 32, 0.5); margin-top: 0.6rem; 
+            font-size: 0.85rem; letter-spacing: 0.15em;
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+        }
+
+        #controls {
+            position: fixed; bottom: 20px; right: 20px; z-index: 20;
+            display: flex; gap: 10px;
+        }
+        .control-btn {
+            width: 50px; height: 50px; border-radius: 50%;
+            background: rgba(218,165,32,0.15);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(218, 165, 32, 0.3); color: #FFF8DC;
+            font-size: 1.2rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .control-btn:hover { 
+            background: rgba(218,165,32,0.3); 
+            transform: scale(1.1); 
+        }
+
+        .confetti-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5;
+        }
+
+        .emoji-float {
+            position: fixed; font-size: 2rem; pointer-events: none; z-index: 15;
+            animation: emojiFloat 4s ease-in forwards;
+        }
+        @keyframes emojiFloat {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 200;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center; color: #FFF8DC;
+            transition: opacity 0.5s;
+        }
+        .loading-overlay.visible { display: flex; }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 3px solid rgba(218,165,32,0.15);
+            border-top-color: #DAA520; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { 
+            font-size: 1rem; letter-spacing: 0.15em; 
+            font-family: 'Cormorant Garamond', serif;
+            color: #DAA520;
+        }
+        .loading-progress { margin-top: 8px; font-size: 0.8rem; color: rgba(218,165,32,0.5); }
+    </style>
+<base target="_blank">
+</head>
+<body>
+
+    <video id="video-bg" loop muted playsinline>
+        <source src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4" type="video/mp4">
+    </video>
+
+    <div id="canvas-container"></div>
+    <canvas class="confetti-canvas" id="confetti"></canvas>
+
+    <div id="vignette"></div>
+    <div id="ui-layer">
+      <div id="ui-tilt">
+        <div class="birthday-text">Happy<br>Birthday</div>
+        <div class="luxury-divider"></div>
+        <div class="birthday-name">KING</div>
+        <div class="sub-text">17th of July is your day</div>
+        <div class="luxury-divider"></div>
+        <div class="sub-text">to amplify your life</div>
+        <div class="sub-text" style="font-size: clamp(0.9rem, 2vw, 1.6rem); margin-top: 0.8rem; opacity: 0.7;">Make a wish ✨</div>
+      </div>
+    </div>
+
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading birthday magic...</div>
+        <div class="loading-progress" id="load-progress">0 / 8 images</div>
+    </div>
+
+    <div id="start-overlay" onclick="startExperience()">
+        <div class="start-btn">🎂</div>
+        <div class="start-text">Tap to Celebrate</div>
+        <div class="start-sub">A special moment awaits</div>
+    </div>
+
+    <div id="controls">
+        <button class="control-btn" onclick="toggleMusic()" title="Toggle Music">🎵</button>
+        <button class="control-btn" onclick="toggleVideo()" title="Toggle Video">🎬</button>
+        <button class="control-btn" onclick="burstConfetti()" title="More Confetti!">🎉</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const DEFAULT_VIDEO_URL = "https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4";
+        const CUSTOM_VIDEO_URL = "video.mp4";
+
+        const CARD_IMAGES = [
+            "img9.png", "img3.png", "img2.png", "img4.png",
+            "img8.png", "img5.png", "img6.png", "img7.png", "img1.png"
+        ];
+
+        const CARD_LABELS = [
+            'Sweet Moments', 'Party Time', 'Make a Wish', 'Celebrate Life',
+            'Joy & Laughter', 'Special Day', 'Dream Big', 'Love & Happiness', 'The Star'
+        ];
+
+        const CARD_COLORS = [
+            '#DAA520', '#B8860B', '#CD853F', '#D2691E',
+            '#8B4513', '#A0522D', '#BC8F8F', '#F4A460', '#DAA520'
+        ];
+
+        const SUN_SIZE = 3.8;
+        const SUN_SPEED = 0.003;
+        const CARD_WIDTH = 3.5;
+        const CARD_HEIGHT = 3.85;
+        const ORBIT_SPEED = 0.041;
+        const BOB_SPEED = 1.0;
+        const BOB_HEIGHT = 0.4;
+        const CAMERA_SPEED = 0.12;
+        const STAR_SPEED = 0.0002;
+
+        // ==================== AUDIO ====================
+        let audioCtx, musicPlaying = false, musicInterval;
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playTone(freq, dur, vol) {
+            if (!audioCtx) return;
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(0, audioCtx.currentTime);
+            g.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.5);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(); o.stop(audioCtx.currentTime + dur);
+        }
+
+        function playPluck(freq, delay, vol) {
+            if (!audioCtx) return;
+            setTimeout(() => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = 'triangle';
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(); o.stop(audioCtx.currentTime + 1.2);
+            }, delay);
+        }
+
+        const CHORDS = [
+            { name: "G",  notes: [196.00, 246.94, 293.66] },
+            { name: "Dm", notes: [293.66, 349.23, 440.00] },
+            { name: "F",  notes: [174.61, 220.00, 261.63] },
+            { name: "C",  notes: [261.63, 329.63, 392.00] },
+            { name: "G",  notes: [196.00, 246.94, 293.66] },
+            { name: "Dm", notes: [293.66, 349.23, 440.00] },
+            { name: "F",  notes: [174.61, 220.00, 261.63] },
+            { name: "Am", notes: [220.00, 261.63, 329.63] }
+        ];
+
+        function startMusic() {
+            if (musicPlaying) return;
+            musicPlaying = true;
+            let chordIndex = 0;
+            CHORDS[0].notes.forEach((f, i) => {
+                playTone(f, 3.0, 0.05);
+                playPluck(f, i * 40, 0.04);
+            });
+            musicInterval = setInterval(() => {
+                if (!musicPlaying) return;
+                chordIndex = (chordIndex + 1) % CHORDS.length;
+                const chord = CHORDS[chordIndex];
+                chord.notes.forEach((f, i) => {
+                    setTimeout(() => playTone(f, 3.0, 0.05), i * 50);
+                });
+                chord.notes.forEach((f, i) => {
+                    setTimeout(() => playPluck(f, i * 30, 0.035), i * 30);
+                });
+                if (chord.name === "G" || chord.name === "C") {
+                    const sparkle = chord.name === "G" ? 783.99 : 523.25;
+                    setTimeout(() => playPluck(sparkle, 0, 0.025), 400);
+                }
+            }, 2800);
+        }
+
+        function stopMusic() { musicPlaying = false; clearInterval(musicInterval); }
+
+        function toggleMusic() {
+            if (musicPlaying) stopMusic();
+            else { if (!audioCtx) initAudio(); startMusic(); }
+        }
+
+        // ==================== VIDEO TOGGLE ====================
+        let usingCustomVideo = false;
+        const videoEl = document.getElementById('video-bg');
+
+        function toggleVideo() {
+            if (CUSTOM_VIDEO_URL === "YOUR_VIDEO_HERE.mp4" || !CUSTOM_VIDEO_URL) {
+                videoEl.paused ? videoEl.play() : videoEl.pause();
+                return;
+            }
+            usingCustomVideo = !usingCustomVideo;
+            const src = videoEl.querySelector('source');
+            if (usingCustomVideo) {
+                src.src = CUSTOM_VIDEO_URL;
+                videoEl.load();
+                videoEl.muted = true;
+                videoEl.loop = true;
+                videoEl.play().catch(() => {});
+            } else {
+                src.src = DEFAULT_VIDEO_URL;
+                videoEl.load();
+                videoEl.muted = true;
+                videoEl.loop = true;
+                videoEl.play().catch(() => {});
+            }
+        }
+
+        // ==================== IMAGE LOADING ====================
+        function loadImage(url, timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let done = false;
+                const timer = setTimeout(() => { if (!done) { done = true; reject(); } }, timeout);
+                img.onload = () => { if (!done) { done = true; clearTimeout(timer); resolve(img); } };
+                img.onerror = () => { if (!done) { done = true; clearTimeout(timer); reject(); } };
+                img.crossOrigin = 'anonymous';
+                img.src = url;
+            });
+        }
+
+        async function loadAllImages() {
+            const images = [];
+            const progressEl = document.getElementById('load-progress');
+            for (let i = 0; i < CARD_IMAGES.length; i++) {
+                try {
+                    const img = await loadImage(CARD_IMAGES[i]);
+                    images.push(img);
+                } catch (e) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512; canvas.height = 640;
+                    const ctx = canvas.getContext('2d');
+                    const gradient = ctx.createLinearGradient(0, 0, 512, 640);
+                    gradient.addColorStop(0, CARD_COLORS[i % CARD_COLORS.length]);
+                    gradient.addColorStop(0.5, adjustColor(CARD_COLORS[i % CARD_COLORS.length], 30));
+                    gradient.addColorStop(1, CARD_COLORS[i % CARD_COLORS.length]);
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 512, 640);
+                    images.push(canvas);
+                }
+                if (progressEl) progressEl.textContent = (i + 1) + ' / ' + CARD_IMAGES.length + ' images';
+            }
+            return images;
+        }
+
+        // ==================== THREE.JS SCENE ====================
+        let scene, camera, renderer, sun, planets = [], starField, time = 0;
+
+        function initThree(images) {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 20;
+            camera.position.y = 5;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const pointLight = new THREE.PointLight(0xffd700, 2, 50);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+            const rimLight = new THREE.DirectionalLight(0xffd700, 0.5);
+            rimLight.position.set(5, 5, 5);
+            scene.add(rimLight);
+
+            createSun();
+            createPlanets(images);
+            createStarfield();
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function createSun() {
+            const geometry = new THREE.SphereGeometry(SUN_SIZE, 32, 32);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xffd700,
+                emissive: 0xffaa00,
+                emissiveIntensity: 0.4
+            });
+            sun = new THREE.Mesh(geometry, material);
+            scene.add(sun);
+
+            // Single glow layer
+            const glowGeometry = new THREE.SphereGeometry(SUN_SIZE * 1.5, 16, 16);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffd700, transparent: true, opacity: 0.1, side: THREE.BackSide
+            });
+            sun.add(new THREE.Mesh(glowGeometry, glowMaterial));
+        }
+
+        function createCardTexture(image, label, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 640;
+            const ctx = canvas.getContext('2d');
+
+            const gradient = ctx.createLinearGradient(0, 0, 512, 640);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(0.5, adjustColor(color, 20));
+            gradient.addColorStop(1, adjustColor(color, -30));
+            ctx.fillStyle = gradient;
+            roundRect(ctx, 0, 0, 512, 640, 30);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(218, 165, 32, 0.5)';
+            ctx.lineWidth = 4;
+            roundRect(ctx, 6, 6, 500, 628, 26);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            roundRect(ctx, 30, 30, 452, 450, 20);
+            ctx.fill();
+
+            const imgW = image.width || 512;
+            const imgH = image.height || 640;
+            const imgAspect = imgW / imgH;
+            const frameAspect = 452 / 450;
+            let sx, sy, sWidth, sHeight;
+
+            if (imgAspect > frameAspect) {
+                sHeight = imgH; sWidth = imgH * frameAspect;
+                sx = (imgW - sWidth) / 2; sy = 0;
+            } else {
+                sWidth = imgW; sHeight = imgW / frameAspect;
+                sx = 0; sy = (imgH - sHeight) / 2;
+            }
+
+            ctx.save();
+            roundRect(ctx, 30, 30, 452, 450, 20);
+            ctx.clip();
+            try { ctx.drawImage(image, sx, sy, sWidth, sHeight, 30, 30, 452, 450); }
+            catch (e) { ctx.fillStyle = color; ctx.fillRect(30, 30, 452, 450); }
+            ctx.restore();
+
+            const overlayGrad = ctx.createLinearGradient(0, 350, 0, 480);
+            overlayGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            overlayGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+            ctx.fillStyle = overlayGrad;
+            ctx.fillRect(30, 350, 452, 130);
+
+            ctx.font = 'bold 44px "Playfair Display", serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFF8DC';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 12;
+            ctx.fillText(label, 256, 555);
+
+            ctx.shadowColor = 'transparent';
+            ctx.font = '20px serif';
+            ctx.fillStyle = 'rgba(218, 165, 32, 0.5)';
+            ctx.fillText('✦ ✦ ✦', 256, 610);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createPlanets(images) {
+            images.forEach((image, i) => {
+                const angle = (i / images.length) * Math.PI * 2;
+                const radius = 8 + (i % 3) * 3;
+                const speed = 0.25 + (i % 4) * 0.1;
+                const tilt = (Math.random() - 0.5) * 0.6;
+
+                const texture = createCardTexture(image, CARD_LABELS[i], CARD_COLORS[i]);
+                const geometry = new THREE.PlaneGeometry(CARD_WIDTH, CARD_HEIGHT);
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    emissive: new THREE.Color(CARD_COLORS[i]),
+                    emissiveIntensity: 0.1,
+                    roughness: 0.3,
+                    metalness: 0.1,
+                    side: THREE.DoubleSide
+                });
+
+                const card = new THREE.Mesh(geometry, material);
+                const orbitContainer = new THREE.Object3D();
+                orbitContainer.rotation.y = angle;
+                orbitContainer.rotation.x = tilt;
+                scene.add(orbitContainer);
+
+                card.position.x = radius;
+                orbitContainer.add(card);
+
+                planets.push({
+                    mesh: card, container: orbitContainer, speed: speed,
+                    floatSpeed: BOB_SPEED + Math.random() * 0.5,
+                    floatAmp: BOB_HEIGHT + Math.random() * 0.3,
+                    rotationOffset: Math.random() * Math.PI * 2
+                });
+            });
+        }
+
+        function createStarfield() {
+            const geometry = new THREE.BufferGeometry();
+            const count = 1500;
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                const r = 20 + Math.random() * 80;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = r * Math.cos(phi);
+                const color = new THREE.Color();
+                const hue = Math.random() > 0.6 ? 0.12 : (Math.random() > 0.5 ? 0.6 : 0.0);
+                color.setHSL(hue, 0.7, 0.85);
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.15, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending
+            });
+
+            starField = new THREE.Points(geometry, material);
+            scene.add(starField);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.016;
+
+            if (sun) {
+                sun.rotation.y += SUN_SPEED;
+                sun.rotation.x += SUN_SPEED * 0.4;
+            }
+
+            planets.forEach((planet, i) => {
+                planet.container.rotation.y += planet.speed * ORBIT_SPEED;
+                planet.mesh.position.y = Math.sin(time * planet.floatSpeed + planet.rotationOffset) * planet.floatAmp;
+                planet.mesh.lookAt(camera.position);
+            });
+
+            if (starField) {
+                starField.rotation.y += STAR_SPEED;
+            }
+
+            const dolly = Math.sin(time * 0.15) * 2.5;
+            camera.position.x = Math.sin(time * CAMERA_SPEED) * 3;
+            camera.position.z = 20 + Math.cos(time * CAMERA_SPEED * 0.7) * 2 + dolly;
+            camera.position.y = 5 + Math.cos(time * CAMERA_SPEED * 0.6) * 1.5;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==================== CONFETTI ====================
+        const confettiCanvas = document.getElementById('confetti');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let confettiParticles = [];
+
+        function resizeConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        resizeConfetti();
+        window.addEventListener('resize', resizeConfetti);
+
+        class Confetti {
+            constructor(burst = false) {
+                this.x = burst ? confettiCanvas.width / 2 + (Math.random() - 0.5) * 100 : Math.random() * confettiCanvas.width;
+                this.y = burst ? confettiCanvas.height / 2 + (Math.random() - 0.5) * 100 : -10;
+                this.size = Math.random() * 8 + 4;
+                this.speedY = burst ? (Math.random() - 0.5) * 12 : Math.random() * 2 + 1;
+                this.speedX = burst ? (Math.random() - 0.5) * 12 : (Math.random() - 0.5) * 1.5;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = (Math.random() - 0.5) * 6;
+                const goldHues = [45, 50, 35, 30, 55, 40];
+                this.color = `hsl(${goldHues[Math.floor(Math.random() * goldHues.length)]}, ${70 + Math.random() * 30}%, ${50 + Math.random() * 30}%)`;
+                this.shape = Math.random() > 0.5 ? 'rect' : 'circle';
+                this.life = burst ? 100 : Infinity;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX + Math.sin(this.y * 0.01);
+                this.rotation += this.rotationSpeed;
+                if (this.life !== Infinity) this.life--;
+                if (this.life < 15) return false;
+                if (this.life === Infinity && this.y > confettiCanvas.height + 10) {
+                    this.y = -10;
+                    this.x = Math.random() * confettiCanvas.width;
+                }
+                return true;
+            }
+            draw() {
+                confettiCtx.save();
+                confettiCtx.translate(this.x, this.y);
+                confettiCtx.rotate(this.rotation * Math.PI / 180);
+                confettiCtx.fillStyle = this.color;
+                if (this.shape === 'rect') {
+                    confettiCtx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size * 0.6);
+                } else {
+                    confettiCtx.beginPath();
+                    confettiCtx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+                    confettiCtx.fill();
+                }
+                confettiCtx.restore();
+            }
+        }
+
+        function initConfetti() {
+            for (let i = 0; i < 80; i++) confettiParticles.push(new Confetti());
+            function loop() {
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                confettiParticles = confettiParticles.filter(p => p.update());
+                confettiParticles.forEach(p => p.draw());
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function burstConfetti() {
+            for (let i = 0; i < 30; i++) confettiParticles.push(new Confetti(true));
+            if (audioCtx) {
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                    setTimeout(() => playTone(freq, 'sine', 0.5, 0.15), i * 100);
+                });
+            }
+            spawnEmojis();
+        }
+
+        function spawnEmojis() {
+            const emojis = ['🎉', '🎂', '🎁', '🎈', '✨', '🌟', '🍰', '🎊', '💫', '⭐'];
+            for (let i = 0; i < 10; i++) {
+                const el = document.createElement('div');
+                el.className = 'emoji-float';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = Math.random() * 100 + 'vw';
+                el.style.animationDuration = (3 + Math.random() * 2) + 's';
+                el.style.fontSize = (1.5 + Math.random() * 2) + 'rem';
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 5000);
+            }
+        }
+
+        // ==================== UTILITIES ====================
+        function adjustColor(hex, amount) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        // ==================== MAIN START ====================
+        let experienceStarted = false;
+
+        async function startExperience() {
+            if (experienceStarted) return;
+            experienceStarted = true;
+
+            document.getElementById('start-overlay').classList.add('hidden');
+            const loading = document.getElementById('loading');
+            loading.classList.add('visible');
+
+            videoEl.muted = true;
+            videoEl.loop = true;
+            videoEl.play().catch(e => console.log('Video autoplay blocked'));
+
+            let images;
+            try { images = await loadAllImages(); }
+            catch (e) {
+                images = [];
+                for (let i = 0; i < 8; i++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512; canvas.height = 640;
+                    const ctx = canvas.getContext('2d');
+                    const gradient = ctx.createLinearGradient(0, 0, 512, 640);
+                    gradient.addColorStop(0, CARD_COLORS[i]);
+                    gradient.addColorStop(1, adjustColor(CARD_COLORS[i], -40));
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 512, 640);
+                    images.push(canvas);
+                }
+            }
+
+            loading.classList.add('hidden');
+            initAudio();
+            startMusic();
+            initThree(images);
+            initConfetti();
+
+            setTimeout(burstConfetti, 500);
+            setTimeout(burstConfetti, 1500);
+            setInterval(spawnEmojis, 10000);
+        }
+
+        // Mouse interaction
+        const uiTilt = document.getElementById('ui-tilt');
+        document.addEventListener('mousemove', (e) => {
+            const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+            const ny = (e.clientY / window.innerHeight - 0.5) * 2;
+            if (uiTilt) {
+                uiTilt.style.transform = `rotateX(${-ny * 4}deg) rotateY(${nx * 5}deg)`;
+            }
+            if (!camera) return;
+            const targetX = Math.sin(time * CAMERA_SPEED) * 3 + nx * 1;
+            const targetY = 5 + Math.cos(time * CAMERA_SPEED * 0.6) * 1.5 + ny * 0.5;
+            camera.position.x += (targetX - camera.position.x) * 0.03;
+            camera.position.y += (targetY - camera.position.y) * 0.03;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!e.touches[0]) return;
+            const nx = (e.touches[0].clientX / window.innerWidth - 0.5) * 2;
+            const ny = (e.touches[0].clientY / window.innerHeight - 0.5) * 2;
+            if (uiTilt) uiTilt.style.transform = `rotateX(${-ny*4}deg) rotateY(${nx*5}deg)`;
+        }, { passive: true });
+
+        document.addEventListener('click', (e) => {
+            if (!experienceStarted || e.target.closest('.control-btn')) return;
+            if (Math.random() > 0.85) burstConfetti();
+        });
+    </script>
+</body>
+</html>
